@@ -1,0 +1,13 @@
+{
+    "ecmaFeatures": {
+        "jsx": true
+    },
+    "env": {
+        "node": true,
+        "mocha": true,
+        "es6": true
+    },
+    "rules": {
+        "semi": 2
+    }
+}

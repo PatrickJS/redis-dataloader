@@ -1,0 +1,25 @@
+{
+  "name": "redis-dataloader",
+  "version": "0.0.0",
+  "description": "DataLoader Using Redis as a Cache",
+  "main": "index.js",
+  "scripts": {
+    "test": "gulp test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/DubFriend/redis-dataloader.git"
+  },
+  "keywords": [
+    "DataLoader",
+    "Cache",
+    "Redis",
+    "Batch"
+  ],
+  "author": "Brian Detering",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DubFriend/redis-dataloader/issues"
+  },
+  "homepage": "https://github.com/DubFriend/redis-dataloader#readme"
+}
