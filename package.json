@@ -21,5 +21,17 @@
   "bugs": {
     "url": "https://github.com/DubFriend/redis-dataloader/issues"
   },
-  "homepage": "https://github.com/DubFriend/redis-dataloader#readme"
+  "homepage": "https://github.com/DubFriend/redis-dataloader#readme",
+  "dependencies": {
+    "dataloader": "^1.2.0",
+    "lodash": "^4.17.2",
+    "q": "^1.4.1"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "gulp": "^3.9.1",
+    "gulp-mocha": "^3.0.1",
+    "redis": "^2.6.3",
+    "sinon": "^1.17.6"
+  }
 }

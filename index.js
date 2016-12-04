@@ -28,63 +28,80 @@ module.exports = fig => {
         }
     };
 
-    const rSet = (key, rawVal) => toString(rawVal)
+    const rSet = (keySpace, key, rawVal, expire) => toString(rawVal)
     .then(val => Q.Promise((resolve, reject) => redis.set(
-        key, toString(val), (err, resp) => err ? reject(err) : resolve(resp)
+        `${keySpace}:${key}`, val, (err, resp) => {
+            if(err) {
+                reject(err);
+            }
+            else {
+                if(expire) {
+                    redis.expire(`${keySpace}:${key}`, expire);
+                }
+                resolve(resp);
+            }
+        }
     )));
 
-    const rMGet = keys => Q.Promise((resolve, reject) => redis.mget(
-        _.map(keys, k => `${keySpace}:${k}`),
-        (err, results) => err ? reject(err) : Q.all(_.map(
-            results,
-            r => r === '' ?
-                Q(new Error(`No key: ${keySpace}:${keys[i]}`)) : parse(r)
-        ))
-    ));
+    const rMGet = (keySpace, keys) => {
+        return Q.Promise((resolve, reject) => redis.mget(
+            _.map(keys, k => `${keySpace}:${k}`),
+            (err, results) => err ?
+                reject(err) :
+                Q.all(_.map(results, parse)).then(resolve)
+        ));
+    };
 
-    const rDel = key => Q.Promise((resolve, reject) => redis.del(
+    const rDel = (keySpace, key) => Q.Promise((resolve, reject) => redis.del(
         `${keySpace}:${key}`, (err, resp) => err ? reject(err) : resolve(resp)
     ));
 
-    let keySpace;
-    let loader;
+    return class RedisDataLoader {
+        constructor(ks, userLoader, options) {
+            this.keySpace = ks;
 
-    return class DataLoader {
-        constructor(ks, batchLoadFn) {
-            keySpace = ks;
+            this.expire = options && options.expire;
 
-            const userLoader = new DataLoader(batchLoadFn, { cache: false });
-
-            loader = new DataLoader(keys => rMGet(
-                _.map(keys, k => `${keySpace}:${k}`)
-            )
-            .then(results => Q.all(_.map(
-                results,
-                (v, i) => {
-                    if(v instanceof Error) {
-                        return Q(v);
+            this.loader = new DataLoader(
+                keys => rMGet(this.keySpace, keys)
+                .then(results => Q.all(_.map(
+                    results,
+                    (v, i) => {
+                        if(v === '') {
+                            return Q(null);
+                        }
+                        else if(v === null) {
+                            return userLoader.load(keys[i])
+                            .then(resp => {
+                                return rSet(this.keySpace, keys[i], resp, this.expire)
+                                .then(() => resp);
+                            });
+                        }
+                        else {
+                            return Q(v);
+                        }
                     }
-                    else if(v === null) {
-                        return userLoader.load(keys[i])
-                        .then(resp => {
-                            return rSet(keys[i], resp)
-                            .then(() => resp || new Error(`No key: ${keys[i]}`));
-                        });
-                    }
-                    else {
-                        return resp;
-                    }
-                }
-            ))));
+                ))),
+                _.omit(options, 'expire')
+            );
         }
 
         load(key) {
-            return loader.load(key);
+            return Q(this.loader.load(key));
+        }
+
+        loadMany(keys) {
+            return Q(this.loader.loadMany(keys));
+        }
+
+        prime(key, val) {
+            return rSet(this.keySpace, key, val, this.expire)
+            .then(() => this.loader.prime(key, val));
         }
 
         clear(key) {
             return key ?
-                rDel(key).then(() => loader.clear(key)) :
+                rDel(this.keySpace, key).then(() => this.loader.clear(key)) :
                 Q.reject(new Error('Key parameter is required'));
         }
     };
