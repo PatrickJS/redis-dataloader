@@ -1,15 +1,15 @@
 # Redis Dataloader
 
 Batching and Caching layer using Redis as the Caching layer.
-Redis Dataloader is based on the [Facebook Dataloader](https://github.com/facebook/dataloader),
-and uses it internally.
+Redis Dataloader wraps [Facebook Dataloader](https://github.com/facebook/dataloader),
+adding Redis as a caching layer.
 
 ## Example
 
 ```javascript
-const redis = require('redis').createClient();
+const redisClient = require('redis').createClient();
 const DataLoader = require('dataloader');
-const RedisDataLoader = require('redis-dataloader')({ redis: redis });
+const RedisDataLoader = require('redis-dataloader')({ redis: redisClient });
 
 const loader = new RedisDataLoader(
     // set a prefix for the keys stored in redis. This way you can avoid key
@@ -20,11 +20,16 @@ const loader = new RedisDataLoader(
     // The options here are the same as the regular dataloader options, with
     // the additional option "expire"
     {
-        // caching here is a local in memory cache
+        // caching here is a local in memory cache. Caching is always done
+        // to redis.
         cache: true,
         // if set redis keys will be set to expire after this many seconds
         // this may be useful as a fallback for a redis cache.
-        expire: 60
+        expire: 60,
+        // can include a custom serialization and deserialization for
+        // storage in redis.
+        serialize: date => date.getTime(),
+        deserialize: timestamp => new Date(timestamp)
     }
 );
 
@@ -40,9 +45,10 @@ loader.clear(5).then(() => {})
 In general, RedisDataLoader has the same API as the Facebook Dataloader Api,
 with a few differences. Read through the [Facebook Dataloader documentation](https://github.com/facebook/dataloader) and then note the differences mentioned here.
 
-- `clear` returns a promise (waits until redis succeeds at deleting the key)
+- `clear` returns a promise (waits until redis succeeds at deleting the key). Facebook Dataloader's `clear` method is synchronous.
 - `clearAll` is not available (redis does not have an efficient way to do this?)
-- `prime` will always overwrite the redis cache. It in turn calls prime on the local cache (which does not adjust the cache if the key already exists)
+- `prime` will always overwrite the cache. Facebook Dataloader will only write to
+its cache if a value is not already present. Prime is asyncronous and returns a Promise.
 - dataloader results must be either `null` or a JSON object.
 
 ### Instantiation

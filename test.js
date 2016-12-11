@@ -50,27 +50,6 @@ describe('redis-dataloader', () => {
     afterEach(() => _.each(this.stubs, s => s.restore()));
 
     describe('load', () => {
-        it('should handle redis key expiration if set', done => {
-            const loader = new RedisDataLoader(
-                this.keySpace,
-                this.userLoader(),
-                { cache: false, expire: 1 }
-            );
-
-            loader.load('json')
-            .then(data => {
-                expect(data).to.deep.equal(this.data.json);
-                setTimeout(() => {
-                    loader.load('json')
-                    .then(data => {
-                        expect(data).to.deep.equal(this.data.json);
-                        expect(this.loadFn.callCount).to.equal(2);
-                        done();
-                    }).done();
-                }, 1100);
-            }).done();
-        });
-
         it('should load json value', done => {
             this.loader.load('json').then(data => {
                 expect(data).to.deep.equal(this.data.json);
@@ -137,6 +116,45 @@ describe('redis-dataloader', () => {
                 done();
             }).done();
         });
+
+        it('should handle redis key expiration if set', done => {
+            const loader = new RedisDataLoader(
+                this.keySpace,
+                this.userLoader(),
+                { cache: false, expire: 1 }
+            );
+
+            loader.load('json')
+            .then(data => {
+                expect(data).to.deep.equal(this.data.json);
+                setTimeout(() => {
+                    loader.load('json')
+                    .then(data => {
+                        expect(data).to.deep.equal(this.data.json);
+                        expect(this.loadFn.callCount).to.equal(2);
+                        done();
+                    }).done();
+                }, 1100);
+            }).done();
+        });
+
+        it('should handle custom serialize and deserialize method', done => {
+            const loader = new RedisDataLoader(
+                this.keySpace,
+                this.userLoader(),
+                {
+                    serialize: v => 100,
+                    deserialize: v => new Date(Number(v))
+                }
+            );
+
+            loader.load('json')
+            .then(data => {
+                expect(data).to.be.instanceof(Date);
+                expect(data.getTime()).to.equal(100);
+                done();
+            }).done();
+        });
     });
 
     describe('loadMany', () => {
@@ -182,7 +200,8 @@ describe('redis-dataloader', () => {
         });
 
         it('should require a key', done => {
-            this.loader.clear().catch(err => {
+            this.loader.clear()
+            .catch(err => {
                 expect(err.message).to.equal('Key parameter is required');
                 done();
             }).done();
