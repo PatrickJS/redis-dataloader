@@ -105,22 +105,37 @@ module.exports = fig => {
         }
 
         load(key) {
-            return Q(this.loader.load(key));
+            return key ?
+                Q(this.loader.load(key)) :
+                Q.reject(new TypeError('key parameter is required'));
         }
 
         loadMany(keys) {
-            return Q(this.loader.loadMany(keys));
+            return keys ?
+                Q(this.loader.loadMany(keys)) :
+                Q.reject(new TypeError('keys parameter is required'));
         }
 
         prime(key, val) {
-            return rSetAndGet(this.keySpace, key, val, this.opt)
-            .then(resp => this.loader.clear(key).prime(key, resp));
+            if(!key) {
+                return Q.reject(new TypeError('key parameter is required'));
+            }
+            else if(val === undefined) {
+                return Q.reject(new TypeError('value parameter is required'));
+            }
+            else {
+                return rSetAndGet(this.keySpace, key, val, this.opt)
+                .then(r => {
+                    this.loader.clear(key)
+                    .prime(key, r === '' ? null : r);
+                });
+            }
         }
 
         clear(key) {
             return key ?
                 rDel(this.keySpace, key).then(() => this.loader.clear(key)) :
-                Q.reject(new Error('Key parameter is required'));
+                Q.reject(new TypeError('key parameter is required'));
         }
     };
 };

@@ -57,6 +57,13 @@ describe('redis-dataloader', () => {
             }).done();
         });
 
+        it('should require key', done => {
+            this.loader.load().catch(err => {
+                expect(err).to.be.instanceof(TypeError);
+                done();
+            }).done();
+        });
+
         it('should use local cache on second load', done => {
             this.stubs.redisMGet = sinon.stub(redis, 'mget', (keys, cb) => {
                 cb(null, [JSON.stringify(this.data.json)]);
@@ -165,6 +172,21 @@ describe('redis-dataloader', () => {
                 done();
             }).done();
         });
+
+        it('should handle empty array', done => {
+            this.loader.loadMany([])
+            .then(results => {
+                expect(results).to.deep.equal([]);
+                done();
+            }).done();
+        });
+
+        it('should require array', done => {
+            this.loader.loadMany().catch(err => {
+                expect(err).to.be.instanceof(TypeError);
+                done();
+            }).done();
+        });
     });
 
     describe('prime', () => {
@@ -185,6 +207,30 @@ describe('redis-dataloader', () => {
                 done();
             }).done();
         });
+
+        it('should require key', done => {
+            this.loader.prime(undefined, { new: 'value' })
+            .catch(err => {
+                expect(err).to.be.instanceof(TypeError);
+                done();
+            }).done();
+        });
+
+        it('should require value', done => {
+            this.loader.prime('json').catch(err => {
+                expect(err).to.be.instanceof(TypeError);
+                done();
+            }).done();
+        });
+
+        it('should allow null for value', done => {
+            this.loader.prime('json', null)
+            .then(() => this.loader.load('json'))
+            .then(data => {
+                expect(data).to.be.null;
+                done();
+            }).done();
+        });
     });
 
     describe('clear', () => {
@@ -202,7 +248,7 @@ describe('redis-dataloader', () => {
         it('should require a key', done => {
             this.loader.clear()
             .catch(err => {
-                expect(err.message).to.equal('Key parameter is required');
+                expect(err).to.be.instanceof(TypeError);
                 done();
             }).done();
         });
