@@ -50,6 +50,7 @@ with a few differences. Read through the [Facebook Dataloader documentation](htt
 - `prime` will always overwrite the cache. Facebook Dataloader will only write to
 its cache if a value is not already present. Prime is asyncronous and returns a Promise.
 - dataloader results must be either `null` or a JSON object.
+- two functions: `clearLocal(key)` and `clearAllLocal()` allow you to clear the local cache only.
 
 ### Instantiation
 

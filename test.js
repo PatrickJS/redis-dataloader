@@ -14,6 +14,10 @@ describe('redis-dataloader', () => {
             key, (err, resp) => err ? reject(err) : resolve(resp)
         ));
 
+        this.rSet = (k, v) => Q.Promise((resolve, reject) => redis.set(
+            k, v, (err, resp) => err ? reject(err) : resolve(resp)
+        ));
+
         this.keySpace = 'key-space';
         this.data = {
             json: { foo: 'bar' },
@@ -249,6 +253,42 @@ describe('redis-dataloader', () => {
             this.loader.clear()
             .catch(err => {
                 expect(err).to.be.instanceof(TypeError);
+                done();
+            }).done();
+        });
+    });
+
+    describe('clearAllLocal', () => {
+        it('should clear all local in-memory cache', done => {
+            this.loader.loadMany(['json', 'null'])
+            .then(() => this.loader.clearAllLocal())
+            .then(() => this.rSet(
+                `${this.keySpace}:json`, JSON.stringify({ new: 'valeo' })
+            ))
+            .then(() => this.rSet(
+                `${this.keySpace}:null`, JSON.stringify({ foo: 'bar' })
+            ))
+            .then(() => this.loader.loadMany(['null', 'json']))
+            .then(data => {
+                expect(data).to.deep.equal([{ foo: 'bar' }, { new: 'valeo' }]);
+                done();
+            }).done();
+        });
+    });
+
+    describe('clearLocal', () => {
+        it('should clear local cache for a specific key', done => {
+            this.loader.loadMany(['json', 'null'])
+            .then(() => this.loader.clearLocal('json'))
+            .then(() => this.rSet(
+                `${this.keySpace}:json`, JSON.stringify({ new: 'valeo' })
+            ))
+            .then(() => this.rSet(
+                `${this.keySpace}:null`, JSON.stringify({ foo: 'bar' })
+            ))
+            .then(() => this.loader.loadMany(['null', 'json']))
+            .then(data => {
+                expect(data).to.deep.equal([null, { new: 'valeo' }]);
                 done();
             }).done();
         });

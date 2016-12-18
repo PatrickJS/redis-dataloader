@@ -137,6 +137,14 @@ module.exports = fig => {
                 rDel(this.keySpace, key).then(() => this.loader.clear(key)) :
                 Q.reject(new TypeError('key parameter is required'));
         }
+
+        clearAllLocal() {
+            return Q(this.loader.clearAll());
+        }
+
+        clearLocal(key) {
+            return Q(this.loader.clear(key));
+        }
     };
 };
 
