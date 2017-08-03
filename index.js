@@ -1,5 +1,3 @@
-'use strict';
-
 const _ = require('lodash');
 const Q = require('q');
 const DataLoader = require('dataloader');

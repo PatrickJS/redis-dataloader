@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/DubFriend/redis-dataloader#readme",
   "dependencies": {
+    "bluebird": "^3.5.0",
     "dataloader": "^1.2.0",
     "lodash": "^4.17.2",
     "q": "^1.4.1"
