@@ -1,20 +1,22 @@
 const _ = require('lodash');
-const Q = require('q');
-const expect = require('chai').expect;
+const Promise = require('bluebird');
+const chai = require('chai');
+chai.use(require('chai-as-promised'));
+const { expect } = chai;
 const sinon = require('sinon');
 const redis = require('redis').createClient();
 const DataLoader = require('dataloader');
 const RedisDataLoader = require('./index.js')({ redis: redis });
 
 describe('redis-dataloader', () => {
-  beforeEach(done => {
+  beforeEach(() => {
     const rDel = key =>
-      Q.Promise((resolve, reject) =>
+      new Promise((resolve, reject) =>
         redis.del(key, (err, resp) => (err ? reject(err) : resolve(resp)))
       );
 
     this.rSet = (k, v) =>
-      Q.Promise((resolve, reject) =>
+      new Promise((resolve, reject) =>
         redis.set(k, v, (err, resp) => (err ? reject(err) : resolve(resp)))
       );
 
@@ -29,58 +31,45 @@ describe('redis-dataloader', () => {
     this.loadFn = sinon.stub();
 
     _.each(this.data, (v, k) => {
-      this.loadFn.withArgs(k).returns(Q(v));
+      this.loadFn.withArgs(k).returns(Promise.resolve(v));
     });
 
     this.userLoader = () =>
-      new DataLoader(keys => Q.all(_.map(keys, this.loadFn)), {
+      new DataLoader(keys => Promise.map(keys, this.loadFn), {
         cache: false,
       });
 
-    Q.all(_.map(_.keys(this.data), k => rDel(`${this.keySpace}:${k}`)))
-      .then(() => {
-        this.loader = new RedisDataLoader(this.keySpace, this.userLoader());
-
-        this.noCacheLoader = new RedisDataLoader(
-          this.keySpace,
-          this.userLoader(),
-          { cache: false }
-        );
-
-        done();
-      })
-      .done();
+    return Promise.map(_.keys(this.data), k =>
+      rDel(`${this.keySpace}:${k}`)
+    ).then(() => {
+      this.loader = new RedisDataLoader(this.keySpace, this.userLoader());
+      this.noCacheLoader = new RedisDataLoader(
+        this.keySpace,
+        this.userLoader(),
+        { cache: false }
+      );
+    });
   });
 
-  afterEach(() => _.each(this.stubs, s => s.restore()));
+  afterEach(() => {
+    _.each(this.stubs, s => s.restore());
+  });
 
   describe('load', () => {
-    it('should load json value', done => {
-      this.loader
-        .load('json')
-        .then(data => {
-          expect(data).to.deep.equal(this.data.json);
-          done();
-        })
-        .done();
-    });
+    it('should load json value', () =>
+      this.loader.load('json').then(data => {
+        expect(data).to.deep.equal(this.data.json);
+      }));
 
-    it('should require key', done => {
-      this.loader
-        .load()
-        .catch(err => {
-          expect(err).to.be.instanceof(TypeError);
-          done();
-        })
-        .done();
-    });
+    it('should require key', () =>
+      expect(this.loader.load()).to.be.rejectedWith(TypeError));
 
-    it('should use local cache on second load', done => {
+    it('should use local cache on second load', () => {
       this.stubs.redisMGet = sinon.stub(redis, 'mget', (keys, cb) => {
         cb(null, [JSON.stringify(this.data.json)]);
       });
 
-      this.loader
+      return this.loader
         .load('json')
         .then(data => {
           expect(this.loadFn.callCount).to.equal(0);
@@ -90,17 +79,15 @@ describe('redis-dataloader', () => {
         .then(data => {
           expect(this.loadFn.callCount).to.equal(0);
           expect(this.stubs.redisMGet.callCount).to.equal(1);
-          done();
-        })
-        .done();
+        });
     });
 
-    it('should not use in memory cache if option is passed', done => {
+    it('should not use in memory cache if option is passed', () => {
       this.stubs.redisMGet = sinon.stub(redis, 'mget', (keys, cb) => {
         cb(null, [JSON.stringify(this.data.json)]);
       });
 
-      this.noCacheLoader
+      return this.noCacheLoader
         .load('json')
         .then(data => {
           expect(this.loadFn.callCount).to.equal(0);
@@ -110,12 +97,10 @@ describe('redis-dataloader', () => {
         .then(data => {
           expect(this.loadFn.callCount).to.equal(0);
           expect(this.stubs.redisMGet.callCount).to.equal(2);
-          done();
-        })
-        .done();
+        });
     });
 
-    it('should load null values', done => {
+    it('should load null values', () =>
       this.loader
         .load('null')
         .then(data => {
@@ -124,12 +109,9 @@ describe('redis-dataloader', () => {
         })
         .then(data => {
           expect(data).to.be.null;
-          done();
-        })
-        .done();
-    });
+        }));
 
-    it('should handle redis cacheing of null values', done => {
+    it('should handle redis cacheing of null values', () =>
       this.noCacheLoader
         .load('null')
         .then(data => {
@@ -138,10 +120,7 @@ describe('redis-dataloader', () => {
         })
         .then(data => {
           expect(data).to.be.null;
-          done();
-        })
-        .done();
-    });
+        }));
 
     it('should handle redis key expiration if set', done => {
       const loader = new RedisDataLoader(this.keySpace, this.userLoader(), {
@@ -164,115 +143,74 @@ describe('redis-dataloader', () => {
               .done();
           }, 1100);
         })
+        .catch(done)
         .done();
     });
 
-    it('should handle custom serialize and deserialize method', done => {
+    it('should handle custom serialize and deserialize method', () => {
       const loader = new RedisDataLoader(this.keySpace, this.userLoader(), {
         serialize: v => 100,
         deserialize: v => new Date(Number(v)),
       });
 
-      loader
-        .load('json')
-        .then(data => {
-          expect(data).to.be.instanceof(Date);
-          expect(data.getTime()).to.equal(100);
-          done();
-        })
-        .done();
+      return loader.load('json').then(data => {
+        expect(data).to.be.instanceof(Date);
+        expect(data.getTime()).to.equal(100);
+      });
     });
   });
 
   describe('loadMany', () => {
-    it('should load multiple keys', done => {
-      this.loader
-        .loadMany(['json', 'null'])
-        .then(results => {
-          expect(results).to.deep.equal([this.data.json, this.data.null]);
-          done();
-        })
-        .done();
-    });
+    it('should load multiple keys', () =>
+      this.loader.loadMany(['json', 'null']).then(results => {
+        expect(results).to.deep.equal([this.data.json, this.data.null]);
+      }));
 
-    it('should handle empty array', done => {
-      this.loader
-        .loadMany([])
-        .then(results => {
-          expect(results).to.deep.equal([]);
-          done();
-        })
-        .done();
-    });
+    it('should handle empty array', () =>
+      this.loader.loadMany([]).then(results => {
+        expect(results).to.deep.equal([]);
+      }));
 
-    it('should require array', done => {
-      this.loader
-        .loadMany()
-        .catch(err => {
-          expect(err).to.be.instanceof(TypeError);
-          done();
-        })
-        .done();
-    });
+    it('should require array', () =>
+      expect(this.loader.loadMany()).to.be.rejectedWith(TypeError));
   });
 
   describe('prime', () => {
-    it('should set cache', done => {
+    it('should set cache', () =>
       this.loader
         .prime('json', { new: 'value' })
         .then(() => this.loader.load('json'))
         .then(data => {
           expect(data).to.deep.equal({ new: 'value' });
-          done();
-        })
-        .done();
-    });
+        }));
 
-    it('should handle primeing without local cache', done => {
+    it('should handle primeing without local cache', () =>
       this.noCacheLoader
         .prime('json', { new: 'value' })
         .then(() => this.noCacheLoader.load('json'))
         .then(data => {
           expect(data).to.deep.equal({ new: 'value' });
-          done();
-        })
-        .done();
-    });
+        }));
 
-    it('should require key', done => {
-      this.loader
-        .prime(undefined, { new: 'value' })
-        .catch(err => {
-          expect(err).to.be.instanceof(TypeError);
-          done();
-        })
-        .done();
-    });
+    it('should require key', () =>
+      expect(this.loader.prime(undefined, { new: 'value' })).to.be.rejectedWith(
+        TypeError
+      ));
 
-    it('should require value', done => {
-      this.loader
-        .prime('json')
-        .catch(err => {
-          expect(err).to.be.instanceof(TypeError);
-          done();
-        })
-        .done();
-    });
+    it('should require value', () =>
+      expect(this.loader.prime('json')).to.be.rejectedWith(TypeError));
 
-    it('should allow null for value', done => {
+    it('should allow null for value', () =>
       this.loader
         .prime('json', null)
         .then(() => this.loader.load('json'))
         .then(data => {
           expect(data).to.be.null;
-          done();
-        })
-        .done();
-    });
+        }));
   });
 
   describe('clear', () => {
-    it('should clear cache', done => {
+    it('should clear cache', () =>
       this.loader
         .load('json')
         .then(() => this.loader.clear('json'))
@@ -280,24 +218,14 @@ describe('redis-dataloader', () => {
         .then(data => {
           expect(data).to.deep.equal(this.data.json);
           expect(this.loadFn.callCount).to.equal(2);
-          done();
-        })
-        .done();
-    });
+        }));
 
-    it('should require a key', done => {
-      this.loader
-        .clear()
-        .catch(err => {
-          expect(err).to.be.instanceof(TypeError);
-          done();
-        })
-        .done();
-    });
+    it('should require a key', () =>
+      expect(this.loader.clear()).to.be.rejectedWith(TypeError));
   });
 
   describe('clearAllLocal', () => {
-    it('should clear all local in-memory cache', done => {
+    it('should clear all local in-memory cache', () =>
       this.loader
         .loadMany(['json', 'null'])
         .then(() => this.loader.clearAllLocal())
@@ -310,14 +238,11 @@ describe('redis-dataloader', () => {
         .then(() => this.loader.loadMany(['null', 'json']))
         .then(data => {
           expect(data).to.deep.equal([{ foo: 'bar' }, { new: 'valeo' }]);
-          done();
-        })
-        .done();
-    });
+        }));
   });
 
   describe('clearLocal', () => {
-    it('should clear local cache for a specific key', done => {
+    it('should clear local cache for a specific key', () =>
       this.loader
         .loadMany(['json', 'null'])
         .then(() => this.loader.clearLocal('json'))
@@ -330,9 +255,6 @@ describe('redis-dataloader', () => {
         .then(() => this.loader.loadMany(['null', 'json']))
         .then(data => {
           expect(data).to.deep.equal([null, { new: 'valeo' }]);
-          done();
-        })
-        .done();
-    });
+        }));
   });
 });

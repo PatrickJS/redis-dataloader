@@ -26,11 +26,11 @@
   "dependencies": {
     "bluebird": "^3.5.0",
     "dataloader": "^1.2.0",
-    "lodash": "^4.17.2",
-    "q": "^1.4.1"
+    "lodash": "^4.17.2"
   },
   "devDependencies": {
     "chai": "^3.5.0",
+    "chai-as-promised": "^7.1.1",
     "gulp": "^3.9.1",
     "gulp-mocha": "^3.0.1",
     "redis": "^2.6.3",

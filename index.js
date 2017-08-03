@@ -1,12 +1,12 @@
 const _ = require('lodash');
-const Q = require('q');
+const Promise = require('bluebird');
 const DataLoader = require('dataloader');
 
 module.exports = fig => {
   const redis = fig.redis;
 
   const parse = (resp, opt) =>
-    Q.Promise((resolve, reject) => {
+    new Promise((resolve, reject) => {
       try {
         if (resp === '' || resp === null) {
           resolve(resp);
@@ -22,37 +22,38 @@ module.exports = fig => {
 
   const toString = (val, opt) => {
     if (val === null) {
-      return Q('');
+      return Promise.resolve('');
     } else if (opt.serialize) {
-      return Q(opt.serialize(val));
+      return Promise.resolve(opt.serialize(val));
     } else if (_.isObject(val)) {
-      return Q(JSON.stringify(val));
+      return Promise.resolve(JSON.stringify(val));
     } else {
-      return Q.reject(new Error('Must be Object or Null'));
+      return Promise.reject(new Error('Must be Object or Null'));
     }
   };
 
   const makeKey = (keySpace, key) => `${keySpace}:${key}`;
 
   const rSetAndGet = (keySpace, key, rawVal, opt) =>
-    toString(rawVal, opt).then(val =>
-      Q.Promise((resolve, reject) => {
-        const fullKey = makeKey(keySpace, key);
-        const multi = redis.multi();
-        multi.set(fullKey, val);
-        if (opt.expire) {
-          multi.expire(fullKey, opt.expire);
-        }
-        multi.get(fullKey);
-        multi.exec(
-          (err, replies) =>
-            err ? reject(err) : parse(_.last(replies), opt).then(resolve)
-        );
-      })
+    toString(rawVal, opt).then(
+      val =>
+        new Promise((resolve, reject) => {
+          const fullKey = makeKey(keySpace, key);
+          const multi = redis.multi();
+          multi.set(fullKey, val);
+          if (opt.expire) {
+            multi.expire(fullKey, opt.expire);
+          }
+          multi.get(fullKey);
+          multi.exec(
+            (err, replies) =>
+              err ? reject(err) : parse(_.last(replies), opt).then(resolve)
+          );
+        })
     );
 
   const rGet = (keySpace, key, opt) =>
-    Q.Promise((resolve, reject) =>
+    new Promise((resolve, reject) =>
       redis.get(
         makeKey(keySpace, key),
         (err, result) => (err ? reject(err) : parse(result, opt).then(resolve))
@@ -60,18 +61,18 @@ module.exports = fig => {
     );
 
   const rMGet = (keySpace, keys, opt) =>
-    Q.Promise((resolve, reject) =>
+    new Promise((resolve, reject) =>
       redis.mget(
         _.map(keys, k => makeKey(keySpace, k)),
         (err, results) =>
           err
             ? reject(err)
-            : Q.all(_.map(results, r => parse(r, opt))).then(resolve)
+            : Promise.map(results, r => parse(r, opt)).then(resolve)
       )
     );
 
   const rDel = (keySpace, key) =>
-    Q.Promise((resolve, reject) =>
+    new Promise((resolve, reject) =>
       redis.del(
         makeKey(keySpace, key),
         (err, resp) => (err ? reject(err) : resolve(resp))
@@ -86,22 +87,20 @@ module.exports = fig => {
       this.loader = new DataLoader(
         keys =>
           rMGet(this.keySpace, keys, this.opt).then(results =>
-            Q.all(
-              _.map(results, (v, i) => {
-                if (v === '') {
-                  return Q(null);
-                } else if (v === null) {
-                  return userLoader
-                    .load(keys[i])
-                    .then(resp =>
-                      rSetAndGet(this.keySpace, keys[i], resp, this.opt)
-                    )
-                    .then(r => (r === '' ? null : r));
-                } else {
-                  return Q(v);
-                }
-              })
-            )
+            Promise.map(results, (v, i) => {
+              if (v === '') {
+                return Promise.resolve(null);
+              } else if (v === null) {
+                return userLoader
+                  .load(keys[i])
+                  .then(resp =>
+                    rSetAndGet(this.keySpace, keys[i], resp, this.opt)
+                  )
+                  .then(r => (r === '' ? null : r));
+              } else {
+                return Promise.resolve(v);
+              }
+            })
           ),
         _.omit(opt, customOptions)
       );
@@ -109,21 +108,21 @@ module.exports = fig => {
 
     load(key) {
       return key
-        ? Q(this.loader.load(key))
-        : Q.reject(new TypeError('key parameter is required'));
+        ? Promise.resolve(this.loader.load(key))
+        : Promise.reject(new TypeError('key parameter is required'));
     }
 
     loadMany(keys) {
       return keys
-        ? Q(this.loader.loadMany(keys))
-        : Q.reject(new TypeError('keys parameter is required'));
+        ? Promise.resolve(this.loader.loadMany(keys))
+        : Promise.reject(new TypeError('keys parameter is required'));
     }
 
     prime(key, val) {
       if (!key) {
-        return Q.reject(new TypeError('key parameter is required'));
+        return Promise.reject(new TypeError('key parameter is required'));
       } else if (val === undefined) {
-        return Q.reject(new TypeError('value parameter is required'));
+        return Promise.reject(new TypeError('value parameter is required'));
       } else {
         return rSetAndGet(this.keySpace, key, val, this.opt).then(r => {
           this.loader.clear(key).prime(key, r === '' ? null : r);
@@ -134,15 +133,15 @@ module.exports = fig => {
     clear(key) {
       return key
         ? rDel(this.keySpace, key).then(() => this.loader.clear(key))
-        : Q.reject(new TypeError('key parameter is required'));
+        : Promise.reject(new TypeError('key parameter is required'));
     }
 
     clearAllLocal() {
-      return Q(this.loader.clearAll());
+      return Promise.resolve(this.loader.clearAll());
     }
 
     clearLocal(key) {
-      return Q(this.loader.clear(key));
+      return Promise.resolve(this.loader.clear(key));
     }
   };
 };
