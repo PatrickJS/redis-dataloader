@@ -1,6 +1,6 @@
 {
   "name": "redis-dataloader",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "DataLoader Using Redis as a Cache",
   "main": "index.js",
   "scripts": {
@@ -26,6 +26,7 @@
   "dependencies": {
     "bluebird": "^3.5.0",
     "dataloader": "^1.2.0",
+    "json-stable-stringify": "^1.0.1",
     "lodash": "^4.17.2"
   },
   "devDependencies": {

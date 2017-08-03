@@ -1,6 +1,7 @@
 const _ = require('lodash');
 const Promise = require('bluebird');
 const DataLoader = require('dataloader');
+const stringify = require('json-stable-stringify');
 
 module.exports = fig => {
   const redis = fig.redis;
@@ -32,13 +33,14 @@ module.exports = fig => {
     }
   };
 
-  const makeKey = (keySpace, key) => `${keySpace}:${key}`;
+  const makeKey = (keySpace, key, cacheKeyFn) =>
+    `${keySpace}:${cacheKeyFn(key)}`;
 
   const rSetAndGet = (keySpace, key, rawVal, opt) =>
     toString(rawVal, opt).then(
       val =>
         new Promise((resolve, reject) => {
-          const fullKey = makeKey(keySpace, key);
+          const fullKey = makeKey(keySpace, key, opt.cacheKeyFn);
           const multi = redis.multi();
           multi.set(fullKey, val);
           if (opt.expire) {
@@ -55,7 +57,7 @@ module.exports = fig => {
   const rGet = (keySpace, key, opt) =>
     new Promise((resolve, reject) =>
       redis.get(
-        makeKey(keySpace, key),
+        makeKey(keySpace, key, opt.cacheKeyFn),
         (err, result) => (err ? reject(err) : parse(result, opt).then(resolve))
       )
     );
@@ -63,7 +65,7 @@ module.exports = fig => {
   const rMGet = (keySpace, keys, opt) =>
     new Promise((resolve, reject) =>
       redis.mget(
-        _.map(keys, k => makeKey(keySpace, k)),
+        _.map(keys, k => makeKey(keySpace, k, opt.cacheKeyFn)),
         (err, results) =>
           err
             ? reject(err)
@@ -71,22 +73,44 @@ module.exports = fig => {
       )
     );
 
-  const rDel = (keySpace, key) =>
+  const rDel = (keySpace, key, opt) =>
     new Promise((resolve, reject) =>
       redis.del(
-        makeKey(keySpace, key),
+        makeKey(keySpace, key, opt.cacheKeyFn),
         (err, resp) => (err ? reject(err) : resolve(resp))
       )
     );
 
   return class RedisDataLoader {
     constructor(ks, userLoader, opt) {
-      const customOptions = ['expire', 'serialize', 'deserialize'];
+      const customOptions = [
+        'expire',
+        'serialize',
+        'deserialize',
+        'cacheKeyFn',
+      ];
       this.opt = _.pick(opt, customOptions) || {};
+
+      this.opt.cacheKeyFn =
+        this.opt.cacheKeyFn ||
+        (k => {
+          if (_.isString(k)) {
+            return k;
+          } else if (_.isObject(k)) {
+            return stringify(k);
+          } else {
+            throw new TypeError('Key must be a string or a json object');
+          }
+        });
+
       this.keySpace = ks;
       this.loader = new DataLoader(
         keys =>
-          rMGet(this.keySpace, keys, this.opt).then(results =>
+          rMGet(
+            this.keySpace,
+            _.map(keys, this.opt.cacheKeyFn),
+            this.opt
+          ).then(results =>
             Promise.map(results, (v, i) => {
               if (v === '') {
                 return Promise.resolve(null);
@@ -102,7 +126,10 @@ module.exports = fig => {
               }
             })
           ),
-        _.omit(opt, customOptions)
+        _.chain(opt)
+          .omit(customOptions)
+          .extend({ cacheKeyFn: this.opt.cacheKeyFn })
+          .value()
       );
     }
 
@@ -132,7 +159,7 @@ module.exports = fig => {
 
     clear(key) {
       return key
-        ? rDel(this.keySpace, key).then(() => this.loader.clear(key))
+        ? rDel(this.keySpace, key, this.opt).then(() => this.loader.clear(key))
         : Promise.reject(new TypeError('key parameter is required'));
     }
 

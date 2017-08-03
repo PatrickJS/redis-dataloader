@@ -20,6 +20,11 @@ describe('redis-dataloader', () => {
         redis.set(k, v, (err, resp) => (err ? reject(err) : resolve(resp)))
       );
 
+    this.rGet = k =>
+      new Promise((resolve, reject) => {
+        redis.get(k, (err, resp) => (err ? rejecte(err) : resolve(resp)));
+      });
+
     this.keySpace = 'key-space';
     this.data = {
       json: { foo: 'bar' },
@@ -34,13 +39,22 @@ describe('redis-dataloader', () => {
       this.loadFn.withArgs(k).returns(Promise.resolve(v));
     });
 
+    this.loadFn
+      .withArgs(sinon.match({ a: 1, b: 2 }))
+      .returns(Promise.resolve({ bar: 'baz' }));
+
+    this.loadFn
+      .withArgs(sinon.match([1, 2]))
+      .returns(Promise.resolve({ ball: 'bat' }));
+
     this.userLoader = () =>
       new DataLoader(keys => Promise.map(keys, this.loadFn), {
         cache: false,
       });
 
-    return Promise.map(_.keys(this.data), k =>
-      rDel(`${this.keySpace}:${k}`)
+    return Promise.map(
+      _.keys(this.data).concat(['{"a":1,"b":2}', '[1,2]']),
+      k => rDel(`${this.keySpace}:${k}`)
     ).then(() => {
       this.loader = new RedisDataLoader(this.keySpace, this.userLoader());
       this.noCacheLoader = new RedisDataLoader(
@@ -60,6 +74,39 @@ describe('redis-dataloader', () => {
       this.loader.load('json').then(data => {
         expect(data).to.deep.equal(this.data.json);
       }));
+
+    it('should allow for object key', () =>
+      this.loader
+        .load({ a: 1, b: 2 })
+        .then(data => {
+          expect(data).to.deep.equal({ bar: 'baz' });
+          return this.rGet(`${this.keySpace}:{"a":1,"b":2}`);
+        })
+        .then(data => {
+          expect(JSON.parse(data)).to.deep.equal({ bar: 'baz' });
+        }));
+
+    it('should ignore key order on object key', () =>
+      this.loader
+        .load({ b: 2, a: 1 })
+        .then(data => {
+          expect(data).to.deep.equal({ bar: 'baz' });
+          return this.rGet(`${this.keySpace}:{"a":1,"b":2}`);
+        })
+        .then(data => {
+          expect(JSON.parse(data)).to.deep.equal({ bar: 'baz' });
+        }));
+
+    it('should handle key that is array', () =>
+      this.loader
+        .load([1, 2])
+        .then(data => {
+          expect(data).to.deep.equal({ ball: 'bat' });
+          return this.rGet(`${this.keySpace}:[1,2]`);
+        })
+        .then(data => {
+          expect(JSON.parse(data)).to.deep.equal({ ball: 'bat' });
+        }));
 
     it('should require key', () =>
       expect(this.loader.load()).to.be.rejectedWith(TypeError));
@@ -166,6 +213,11 @@ describe('redis-dataloader', () => {
         expect(results).to.deep.equal([this.data.json, this.data.null]);
       }));
 
+    it('should handle object key', () =>
+      this.loader.loadMany([{ a: 1, b: 2 }]).then(results => {
+        expect(results).to.deep.equal([{ bar: 'baz' }]);
+      }));
+
     it('should handle empty array', () =>
       this.loader.loadMany([]).then(results => {
         expect(results).to.deep.equal([]);
@@ -182,6 +234,14 @@ describe('redis-dataloader', () => {
         .then(() => this.loader.load('json'))
         .then(data => {
           expect(data).to.deep.equal({ new: 'value' });
+        }));
+
+    it('should handle object key', () =>
+      this.loader
+        .prime({ a: 1, b: 2 }, { new: 'val' })
+        .then(() => this.loader.load({ a: 1, b: 2 }))
+        .then(data => {
+          expect(data).to.deep.equal({ new: 'val' });
         }));
 
     it('should handle primeing without local cache', () =>
@@ -217,6 +277,16 @@ describe('redis-dataloader', () => {
         .then(() => this.loader.load('json'))
         .then(data => {
           expect(data).to.deep.equal(this.data.json);
+          expect(this.loadFn.callCount).to.equal(2);
+        }));
+
+    it('should handle object key', () =>
+      this.loader
+        .load({ a: 1, b: 2 })
+        .then(() => this.loader.clear({ a: 1, b: 2 }))
+        .then(() => this.loader.load({ a: 1, b: 2 }))
+        .then(data => {
+          expect(data).to.deep.equal({ bar: 'baz' });
           expect(this.loadFn.callCount).to.equal(2);
         }));
 
