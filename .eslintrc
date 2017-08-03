@@ -1,13 +1,50 @@
 {
-    "ecmaFeatures": {
-        "jsx": true
-    },
-    "env": {
-        "node": true,
-        "mocha": true,
-        "es6": true
-    },
-    "rules": {
-        "semi": 2
-    }
+  "extends": [
+    "prettier"
+  ],
+  "env": {
+    "node": true,
+    "mocha": true,
+    "es6": true,
+  },
+  "plugins": [
+    "prettier"
+  ],
+  "rules": {
+    "prettier/prettier": ["error", {
+      "singleQuote": true,
+      "trailingComma": "es5"
+    }],
+    "no-dupe-keys": ["error"],
+    "no-dupe-args": ["error"],
+    "no-duplicate-case": ["error"],
+    "no-empty": ["error"],
+    "no-empty-character-class": ["error"],
+    "no-extra-semi": ["error"],
+    "no-func-assign": ["error"],
+    "no-invalid-regexp": ["error"],
+    "eqeqeq": ["error"],
+    "no-fallthrough": ["error"],
+    "no-floating-decimal": ["error"],
+    "no-global-assign": ["error"],
+    "no-lone-blocks": ["error"],
+    "no-throw-literal": ["error"],
+    "no-unused-expressions": ["warn"],
+    "no-useless-escape": ["warn"],
+    "no-useless-concat": ["error"],
+    "vars-on-top": ["error"],
+    "no-unused-vars": ["error"],
+    "no-use-before-define": ["error"],
+    "global-require": ["error"],
+    "no-process-env": ["error"],
+    "no-process-exit": ["error"],
+    "no-const-assign": ["error"],
+    "no-var": ["error"],
+    "prefer-const": ["error"],
+    "prefer-rest-params": ["error"],
+    "prefer-spread": ["error"],
+    "prefer-template": ["warn"],
+    "no-multiple-empty-lines": ["error"],
+    "func-style": ["error", "expression", { "allowArrowFunctions": true }]
+  }
 }
