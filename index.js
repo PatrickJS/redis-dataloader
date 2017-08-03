@@ -92,16 +92,7 @@ module.exports = fig => {
       this.opt = _.pick(opt, customOptions) || {};
 
       this.opt.cacheKeyFn =
-        this.opt.cacheKeyFn ||
-        (k => {
-          if (_.isString(k)) {
-            return k;
-          } else if (_.isObject(k)) {
-            return stringify(k);
-          } else {
-            throw new TypeError('Key must be a string or a json object');
-          }
-        });
+        this.opt.cacheKeyFn || (k => (_.isObject(k) ? stringify(k) : k));
 
       this.keySpace = ks;
       this.loader = new DataLoader(

@@ -90,6 +90,7 @@ All the options available to Facebook Dataloader can be passed in here. An
 additional option called **expire** is also available, and will set a ttl in seconds
 on all keys set in redis if this option is passed.
 
+By default, the "cacheKeyFn" will serialize objects and arrays using [json-stable-stringify](https://github.com/substack/json-stable-stringify) and allow all other values to pass through unchanged.
 
 ### Caching
 
