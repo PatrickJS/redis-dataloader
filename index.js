@@ -2,9 +2,11 @@ const _ = require('lodash');
 const Promise = require('bluebird');
 const DataLoader = require('dataloader');
 const stringify = require('json-stable-stringify');
+const IORedis = require('ioredis');
 
 module.exports = fig => {
   const redis = fig.redis;
+  const isIORedis = redis instanceof IORedis;
 
   const parse = (resp, opt) =>
     new Promise((resolve, reject) => {
@@ -47,10 +49,13 @@ module.exports = fig => {
             multi.expire(fullKey, opt.expire);
           }
           multi.get(fullKey);
-          multi.exec(
-            (err, replies) =>
-              err ? reject(err) : parse(_.last(replies), opt).then(resolve)
-          );
+          multi.exec((err, replies) => {
+            const lastReply = isIORedis
+              ? _.last(_.last(replies))
+              : _.last(replies);
+
+            return err ? reject(err) : parse(lastReply, opt).then(resolve);
+          });
         })
     );
 
@@ -66,10 +71,11 @@ module.exports = fig => {
     new Promise((resolve, reject) =>
       redis.mget(
         _.map(keys, k => makeKey(keySpace, k, opt.cacheKeyFn)),
-        (err, results) =>
-          err
+        (err, results) => {
+          return err
             ? reject(err)
-            : Promise.map(results, r => parse(r, opt)).then(resolve)
+            : Promise.map(results, r => parse(r, opt)).then(resolve);
+        }
       )
     );
 

@@ -8,6 +8,9 @@ adding Redis as a caching layer.
 
 ```javascript
 const redisClient = require('redis').createClient();
+// the "ioredis" module is also supported
+// const Redis = require('ioredis');
+// const redisClient = new Redis();
 const DataLoader = require('dataloader');
 const RedisDataLoader = require('redis-dataloader')({ redis: redisClient });
 
@@ -90,7 +93,7 @@ All the options available to Facebook Dataloader can be passed in here. An
 additional option called **expire** is also available, and will set a ttl in seconds
 on all keys set in redis if this option is passed.
 
-By default, the "cacheKeyFn" will serialize objects and arrays using [json-stable-stringify](https://github.com/substack/json-stable-stringify) and allow all other values to pass through unchanged.
+The `cacheKeyFn` will default to serialize objects and arrays using [json-stable-stringify](https://github.com/substack/json-stable-stringify) and allow all other values to pass through unchanged.
 
 ### Caching
 
@@ -109,3 +112,10 @@ you may want to disable to the local cache, and just rely on the redis cache ins
 ```
 const loader = new RedisDataLoader('prefix', new DataLoader(), { cache: false });
 ```
+
+## Development
+
+1. Install Dependencies `npm install`
+1. Start Redis `docker-compose stop && docker-compose rm && docker-compose build && docker-compose up -d`
+1. Run Tests `grunt test`
+
