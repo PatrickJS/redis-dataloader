@@ -4,11 +4,8 @@ const chai = require('chai');
 chai.use(require('chai-as-promised'));
 const { expect } = chai;
 const sinon = require('sinon');
-// const redis = require('redis').createClient();
 const DataLoader = require('dataloader');
 const createRedisDataLoader = require('../index');
-
-// const RedisDataLoader = require('../index.js')({ redis });
 
 module.exports = ({ name, redis }) => {
   const RedisDataLoader = createRedisDataLoader({ redis });
@@ -230,6 +227,41 @@ module.exports = ({ name, redis }) => {
 
       it('should require array', () =>
         expect(this.loader.loadMany()).to.be.rejectedWith(TypeError));
+
+      it('should handle custom cacheKeyFn', () => {
+        const loader = new RedisDataLoader(this.keySpace, this.userLoader(), {
+          cacheKeyFn: key => `foo-${key}`,
+        });
+
+        loader.loadMany(['json', 'null']).then(results => {
+          expect(results).to.deep.equal([this.data.json, this.data.null]);
+        });
+      });
+
+      it('should use local cache on second load when using custom cacheKeyFn', () => {
+        this.stubs.redisMGet = sinon.stub(redis, 'mget', (keys, cb) => {
+          cb(null, [JSON.stringify(this.data.json)]);
+        });
+
+        const loader = new RedisDataLoader(this.keySpace, this.userLoader(), {
+          cacheKeyFn: key => `foo-${key}`,
+        });
+
+        return loader
+          .loadMany(['json'])
+          .then(data => {
+            expect(this.loadFn.callCount).to.equal(0);
+            expect(this.stubs.redisMGet.args[0][0]).to.deep.equal([
+              'key-space:foo-json',
+            ]);
+            expect(this.stubs.redisMGet.callCount).to.equal(1);
+            return loader.loadMany(['json']);
+          })
+          .then(data => {
+            expect(this.loadFn.callCount).to.equal(0);
+            expect(this.stubs.redisMGet.callCount).to.equal(1);
+          });
+      });
     });
 
     describe('prime', () => {

@@ -103,11 +103,7 @@ module.exports = fig => {
       this.keySpace = ks;
       this.loader = new DataLoader(
         keys =>
-          rMGet(
-            this.keySpace,
-            _.map(keys, this.opt.cacheKeyFn),
-            this.opt
-          ).then(results =>
+          rMGet(this.keySpace, keys, this.opt).then(results =>
             Promise.map(results, (v, i) => {
               if (v === '') {
                 return Promise.resolve(null);
