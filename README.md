@@ -59,7 +59,7 @@ its cache if a value is not already present. Prime is asyncronous and returns a 
 
 #### Dependency inject a Redis Connection
 
-```
+```javascript
 const redis = require('redis').createClient();
 const RedisDataLoader = require('redis-dataloader')({ redis: redis });
 ```
@@ -69,7 +69,7 @@ const RedisDataLoader = require('redis-dataloader')({ redis: redis });
 Each Dataloader holds its own local in memory cache (Same as Facebook Dataloader),
 and additionally caches to your Redis instance.
 
-```
+```javascript
 const loader = new RedisDataLoader('<redis key prefix>', '<Facebook Dataloader>', '<Options>');
 ```
 
@@ -109,7 +109,7 @@ finally checking your underlying datastore. This pattern may be desirable if for
 example you create a new DataLoader for each request. If your dataloader is long-lived
 you may want to disable to the local cache, and just rely on the redis cache instead
 
-```
+```javascript
 const loader = new RedisDataLoader('prefix', new DataLoader(), { cache: false });
 ```
 
