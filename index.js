@@ -96,10 +96,8 @@ module.exports = fig => {
         'cacheKeyFn',
       ];
       this.opt = _.pick(opt, customOptions) || {};
-
       this.opt.cacheKeyFn =
         this.opt.cacheKeyFn || (k => (_.isObject(k) ? stringify(k) : k));
-
       this.keySpace = ks;
       this.loader = new DataLoader(
         keys =>
