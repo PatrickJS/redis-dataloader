@@ -36,7 +36,7 @@ module.exports = fig => {
   };
 
   const makeKey = (keySpace, key, cacheKeyFn) =>
-    `${keySpace}:${cacheKeyFn(key)}`;
+    `${keySpace ? keySpace + ':' : ''}${cacheKeyFn(key)}`;
 
   const rSetAndGet = (keySpace, key, rawVal, opt) =>
     toString(rawVal, opt).then(
