@@ -24,7 +24,7 @@ module.exports = ({ name, redis }) => {
 
       this.rGet = k =>
         new Promise((resolve, reject) => {
-          redis.get(k, (err, resp) => (err ? rejecte(err) : resolve(resp)));
+          redis.get(k, (err, resp) => (err ? reject(err) : resolve(resp)));
         });
 
       this.keySpace = 'key-space';
@@ -206,6 +206,22 @@ module.exports = ({ name, redis }) => {
           expect(data).to.be.instanceof(Date);
           expect(data.getTime()).to.equal(100);
         });
+      });
+
+      it('should handle optional keySpace', () => {
+        this.stubs.redisMGet = sinon.stub(redis, 'mget', (keys, cb) => {
+          cb(null, [JSON.stringify(this.data.json)]);
+        });
+
+        const loader = new RedisDataLoader(null, this.userLoader());
+
+        return loader
+          .load('foo')
+          .then(_ => {
+            expect(this.stubs.redisMGet.args[0][0]).to.deep.equal([
+              'foo',
+            ]);
+          });
       });
     });
 
