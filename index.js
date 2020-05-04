@@ -6,7 +6,7 @@ const IORedis = require('ioredis');
 
 module.exports = fig => {
   const redis = fig.redis;
-  const isIORedis = redis instanceof IORedis;
+  const isIORedis = IORedis.prototype.isPrototypeOf(redis);
 
   const parse = (resp, opt) =>
     new Promise((resolve, reject) => {
