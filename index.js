@@ -2,11 +2,10 @@ const _ = require('lodash');
 const Promise = require('bluebird');
 const DataLoader = require('dataloader');
 const stringify = require('json-stable-stringify');
-const IORedis = require('ioredis');
 
 module.exports = fig => {
   const redis = fig.redis;
-  const isIORedis = redis instanceof IORedis;
+  const isIORedis = redis.constructor.name !== 'RedisClient';
 
   const parse = (resp, opt) =>
     new Promise((resolve, reject) => {
