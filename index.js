@@ -1,7 +1,8 @@
 const _ = require('lodash');
-const Promise = require('bluebird');
 const DataLoader = require('dataloader');
 const stringify = require('json-stable-stringify');
+
+const mapPromise = (promise, fn) => Promise.all(promise.map(fn));
 
 module.exports = fig => {
   const redis = fig.redis;
@@ -73,7 +74,7 @@ module.exports = fig => {
         (err, results) => {
           return err
             ? reject(err)
-            : Promise.map(results, r => parse(r, opt)).then(resolve);
+            : mapPromise(results, r => parse(r, opt)).then(resolve);
         }
       )
     );
@@ -101,7 +102,7 @@ module.exports = fig => {
       this.loader = new DataLoader(
         keys =>
           rMGet(this.keySpace, keys, this.opt).then(results =>
-            Promise.map(results, (v, i) => {
+            mapPromise(results, (v, i) => {
               if (v === '') {
                 return Promise.resolve(null);
               } else if (v === null) {
