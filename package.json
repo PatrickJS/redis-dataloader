@@ -8,21 +8,25 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/DubFriend/redis-dataloader.git"
+    "url": "git+ssh://git@github.com/PatrickJS/redis-dataloader.git"
   },
   "keywords": [
+    "GraphQL",
     "DataLoader",
     "Cache",
     "Redis",
     "Batch",
     "Facebook"
   ],
-  "author": "Brian Detering",
+  "contributors": [
+    "Brian Detering <BDeterin@gmail.com>",
+    "PatrickJS <github@patrickjs.com>"
+  ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/DubFriend/redis-dataloader/issues"
+    "url": "https://github.com/PatrickJS/redis-dataloader/issues"
   },
-  "homepage": "https://github.com/DubFriend/redis-dataloader#readme",
+  "homepage": "https://github.com/PatrickJS/redis-dataloader#readme",
   "dependencies": {
     "bluebird": "^3.5.0",
     "dataloader": "^1.2.0",
