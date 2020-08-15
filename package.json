@@ -1,6 +1,6 @@
 {
   "name": "redis-dataloader",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "description": "DataLoader Using Redis as a Cache",
   "main": "index.js",
   "scripts": {
