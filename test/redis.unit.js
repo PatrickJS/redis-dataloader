@@ -1,4 +1,4 @@
 require('./test')({
   name: 'with driver "redis"',
-  redis: require('redis').createClient(),
+  redis: require('redis-mock').createClient(),
 });

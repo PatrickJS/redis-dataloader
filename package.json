@@ -4,7 +4,7 @@
   "description": "DataLoader Using Redis as a Cache",
   "main": "index.js",
   "scripts": {
-    "test": "gulp test"
+    "test": "mocha test/**/*.unit.js"
   },
   "repository": {
     "type": "git",
@@ -28,19 +28,16 @@
   },
   "homepage": "https://github.com/PatrickJS/redis-dataloader#readme",
   "dependencies": {
-    "bluebird": "^3.5.0",
     "dataloader": "^1.2.0",
-    "ioredis": "^3.1.2",
     "json-stable-stringify": "^1.0.1",
     "lodash": "^4.17.2"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "chai-as-promised": "^7.1.1",
-    "gulp": "^3.9.1",
-    "gulp-mocha": "^3.0.1",
-    "ioredis": "^3.1.2",
+    "mocha": "^8.1.1",
     "redis": "^2.6.3",
+    "redis-mock": "^0.51.0",
     "sinon": "^1.17.6"
   }
 }

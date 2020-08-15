@@ -1,11 +1,12 @@
 const _ = require('lodash');
-const Promise = require('bluebird');
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
 const { expect } = chai;
 const sinon = require('sinon');
 const DataLoader = require('dataloader');
 const createRedisDataLoader = require('../index');
+
+const mapPromise = (promise, fn) => Promise.all(promise.map(fn));
 
 module.exports = ({ name, redis }) => {
   const RedisDataLoader = createRedisDataLoader({ redis });
@@ -50,11 +51,11 @@ module.exports = ({ name, redis }) => {
         .returns(Promise.resolve({ ball: 'bat' }));
 
       this.userLoader = () =>
-        new DataLoader(keys => Promise.map(keys, this.loadFn), {
+        new DataLoader(keys => mapPromise(keys, this.loadFn), {
           cache: false,
         });
 
-      return Promise.map(
+      return mapPromise(
         _.keys(this.data).concat(['{"a":1,"b":2}', '[1,2]']),
         k => rDel(`${this.keySpace}:${k}`)
       ).then(() => {
@@ -188,12 +189,10 @@ module.exports = ({ name, redis }) => {
                   expect(data).to.deep.equal(this.data.json);
                   expect(this.loadFn.callCount).to.equal(2);
                   done();
-                })
-                .done();
+                });
             }, 1100);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it('should handle custom serialize and deserialize method', () => {
