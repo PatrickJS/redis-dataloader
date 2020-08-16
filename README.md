@@ -4,6 +4,10 @@ Batching and Caching layer using Redis as the Caching layer.
 Redis Dataloader wraps [Facebook Dataloader](https://github.com/facebook/dataloader),
 adding Redis as a caching layer.
 
+`npm install redis-dataloader`  
+or  
+`yarn add redis-dataloader`
+
 ## Example
 
 ```javascript
