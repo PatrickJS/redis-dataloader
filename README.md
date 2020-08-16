@@ -121,5 +121,5 @@ const loader = new RedisDataLoader('prefix', new DataLoader(), { cache: false })
 
 1. Install Dependencies `npm install`
 1. Start Redis `docker-compose stop && docker-compose rm && docker-compose build && docker-compose up -d`
-1. Run Tests `grunt test`
+1. Run Tests `npm test`
 
