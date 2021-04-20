@@ -36,7 +36,10 @@ const loader = new RedisDataLoader(
         // can include a custom serialization and deserialization for
         // storage in redis.
         serialize: date => date.getTime(),
-        deserialize: timestamp => new Date(timestamp)
+        deserialize: timestamp => new Date(timestamp),
+        // Set this to true to return Buffer objects to the deserialize function
+        // when using the ioredis driver.
+        buffer: false
     }
 );
 
@@ -98,6 +101,9 @@ additional option called **expire** is also available, and will set a ttl in sec
 on all keys set in redis if this option is passed.
 
 The `cacheKeyFn` will default to serialize objects and arrays using [json-stable-stringify](https://github.com/substack/json-stable-stringify) and allow all other values to pass through unchanged.
+
+`buffer` will pass a Buffer object to the deserialize function rather than a string.
+If not using the ioredis driver this will throw an error at instation.
 
 ### Caching
 

@@ -16,6 +16,9 @@ module.exports = fig => {
         } else if (opt.deserialize) {
           resolve(opt.deserialize(resp));
         } else {
+          if (Buffer.isBuffer(resp)) {
+            resp = resp.toString();
+          }
           resolve(JSON.parse(resp));
         }
       } catch (err) {
@@ -48,7 +51,11 @@ module.exports = fig => {
           if (opt.expire) {
             multi.expire(fullKey, opt.expire);
           }
-          multi.get(fullKey);
+          if (opt.buffer) {
+            multi.getBuffer(fullKey);
+          } else {
+            multi.get(fullKey);
+          }
           multi.exec((err, replies) => {
             const lastReply = isIORedis
               ? _.last(_.last(replies))
@@ -61,23 +68,41 @@ module.exports = fig => {
 
   const rGet = (keySpace, key, opt) =>
     new Promise((resolve, reject) =>
-      redis.get(
+      (opt.buffer ? redis.getBuffer : redis.get)(
         makeKey(keySpace, key, opt.cacheKeyFn),
         (err, result) => (err ? reject(err) : parse(result, opt).then(resolve))
       )
     );
 
-  const rMGet = (keySpace, keys, opt) =>
-    new Promise((resolve, reject) =>
-      redis.mget(
-        _.map(keys, k => makeKey(keySpace, k, opt.cacheKeyFn)),
-        (err, results) => {
+  const rMGet = (keySpace, keys, opt) => {
+    if (opt.buffer) {
+      // Have to use multi.getBuffer instead of mgetBuffer
+      // because mgetBuffer throws an error.
+      return new Promise((resolve, reject) => {
+        let multi = redis.pipeline();
+        for (const key of keys) {
+          multi = multi.getBuffer(makeKey(keySpace, key, opt.cacheKeyFn));
+        }
+        multi = multi.exec((err, replies) => {
           return err
             ? reject(err)
-            : mapPromise(results, r => parse(r, opt)).then(resolve);
-        }
-      )
-    );
+            // [1] because it's an array where 0 = key, 1 = value.
+            : mapPromise(replies, r => parse(r[1], opt)).then(resolve);
+        });
+      });
+    } else {
+      return new Promise((resolve, reject) =>
+        redis.mget(
+          _.map(keys, k => makeKey(keySpace, k, opt.cacheKeyFn)),
+          (err, results) => {
+            return err
+              ? reject(err)
+              : mapPromise(results, r => parse(r, opt)).then(resolve);
+          }
+        )
+      );
+    }
+  }
 
   const rDel = (keySpace, key, opt) =>
     new Promise((resolve, reject) =>
@@ -94,10 +119,14 @@ module.exports = fig => {
         'serialize',
         'deserialize',
         'cacheKeyFn',
+        'buffer'
       ];
       this.opt = _.pick(opt, customOptions) || {};
       this.opt.cacheKeyFn =
         this.opt.cacheKeyFn || (k => (_.isObject(k) ? stringify(k) : k));
+      if (this.opt.buffer && !isIORedis) {
+        throw new Error('opt.buffer can only be used with ioredis');
+      }
       this.keySpace = ks;
       this.loader = new DataLoader(
         keys =>
