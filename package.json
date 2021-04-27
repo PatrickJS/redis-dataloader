@@ -28,7 +28,7 @@
   },
   "homepage": "https://github.com/PatrickJS/redis-dataloader#readme",
   "dependencies": {
-    "dataloader": "^1.2.0",
+    "dataloader": "^2.0.0",
     "json-stable-stringify": "^1.0.1",
     "lodash": "^4.17.2"
   },
