@@ -226,22 +226,22 @@ module.exports = ({ name, redis }) => {
 
     describe('loadMany', () => {
       it('should load multiple keys', () =>
-        this.loader.loadMany(['json', 'null']).then(results => {
+        Promise.all((['json', 'null']).map((k) => this.loader.load(k))).then(results => {
           expect(results).to.deep.equal([this.data.json, this.data.null]);
         }));
 
       it('should handle object key', () =>
-        this.loader.loadMany([{ a: 1, b: 2 }]).then(results => {
+        Promise.all(([{ a: 1, b: 2 }]).map((k) => this.loader.load(k))).then(results => {
           expect(results).to.deep.equal([{ bar: 'baz' }]);
         }));
 
       it('should handle empty array', () =>
-        this.loader.loadMany([]).then(results => {
+        Promise.all(([]).map((k) => this.loader.load(k))).then(results => {
           expect(results).to.deep.equal([]);
         }));
 
       it('should require array', () =>
-        expect(this.loader.loadMany()).to.be.rejectedWith(TypeError));
+        expect(Promise.all(().map((k) => this.loader.load(k)))).to.be.rejectedWith(TypeError));
 
       it('should handle custom cacheKeyFn', () => {
         const loader = new RedisDataLoader(this.keySpace, this.userLoader(), {
@@ -348,8 +348,7 @@ module.exports = ({ name, redis }) => {
 
     describe('clearAllLocal', () => {
       it('should clear all local in-memory cache', () =>
-        this.loader
-          .loadMany(['json', 'null'])
+        Promise.all((['json', 'null']).map((k) => this.loader.load(k)))
           .then(() => this.loader.clearAllLocal())
           .then(() =>
             this.rSet(`${this.keySpace}:json`, JSON.stringify({ new: 'valeo' }))
@@ -357,7 +356,7 @@ module.exports = ({ name, redis }) => {
           .then(() =>
             this.rSet(`${this.keySpace}:null`, JSON.stringify({ foo: 'bar' }))
           )
-          .then(() => this.loader.loadMany(['null', 'json']))
+          .then(() => Promise.all((['null', 'json']).map((k) => this.loader.load(k))))
           .then(data => {
             expect(data).to.deep.equal([{ foo: 'bar' }, { new: 'valeo' }]);
           }));
@@ -365,8 +364,7 @@ module.exports = ({ name, redis }) => {
 
     describe('clearLocal', () => {
       it('should clear local cache for a specific key', () =>
-        this.loader
-          .loadMany(['json', 'null'])
+        Promise.all((['json', 'null']).map((k) => this.loader.load(k)))
           .then(() => this.loader.clearLocal('json'))
           .then(() =>
             this.rSet(`${this.keySpace}:json`, JSON.stringify({ new: 'valeo' }))
@@ -374,7 +372,7 @@ module.exports = ({ name, redis }) => {
           .then(() =>
             this.rSet(`${this.keySpace}:null`, JSON.stringify({ foo: 'bar' }))
           )
-          .then(() => this.loader.loadMany(['null', 'json']))
+          .then(() => Promise.all((['null', 'json']).map((k) => this.loader.load(k))))
           .then(data => {
             expect(data).to.deep.equal([null, { new: 'valeo' }]);
           }));
