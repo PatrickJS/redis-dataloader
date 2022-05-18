@@ -241,7 +241,7 @@ module.exports = ({ name, redis }) => {
         }));
 
       it('should require array', () =>
-        expect(Promise.all(().map((k) => this.loader.load(k)))).to.be.rejectedWith(TypeError));
+        expect(this.loader.loadMany()).to.be.rejectedWith(TypeError));
 
       it('should handle custom cacheKeyFn', () => {
         const loader = new RedisDataLoader(this.keySpace, this.userLoader(), {
