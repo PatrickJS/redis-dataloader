@@ -132,7 +132,7 @@ module.exports = fig => {
 
     loadMany(keys) {
       return keys
-        ? Promise.resolve(this.loader.loadMany(keys))
+        ? Promise.resolve(Promise.all(keys.map((k) => this.loader.load(k))))
         : Promise.reject(new TypeError('keys parameter is required'));
     }
 
